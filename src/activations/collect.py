@@ -1,7 +1,24 @@
+import json
 import torch
+import numpy as np
 
-def load_json_prompts():
-    pass
+
+def load_json_prompts(json_path):
+    '''
+    Load prompts from a JSON file into [{"text": prompt, "label": label}, ...]
+    '''
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    prompts = []
+    for entry in data:
+        text = entry.get("text")
+        label = entry.get("label")
+        if text is None or label is None:
+            raise ValueError("Each prompt entry must include 'text' and 'label'")
+        prompts.append({"text": text, "label": label})
+
+    return prompts
 
 def batch_data(data, batch_size):
     '''
@@ -30,6 +47,7 @@ def collect_activations(
     model.eval()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
     batches = batch_data(prompts, batch_size)
 
     for batch in batches: 
@@ -59,9 +77,14 @@ def collect_activations(
             row_idx = torch.arange(b_size).to(device)
             last_token_activations = activations[row_idx, last_index, :]
 
-            activations_result.extend(last_token_activations)
+            activations_result.append(last_token_activations.cpu().numpy()) 
             label_result.extend(labels)
 
-    return activations_result, label_result
+            
+    
+    X = np.concatenate(activations_result, axis=0)
+    y = np.array(label_result)
+
+    return X, y
 
  
