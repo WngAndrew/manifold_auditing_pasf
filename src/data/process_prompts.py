@@ -48,7 +48,7 @@ def load_sample_prompts(num_samples=5, seed=42):
     for idx in harmful_indices:
         sample = harmful_split[idx]
         # Extract text (AdvBench has 'goal' or 'instruction' field)
-        text = sample.get('goal', sample.get('instruction', str(sample)))
+        text = sample.get('prompt', str(sample))
         
         prompts.append({
             "text": text,
@@ -78,8 +78,9 @@ if __name__ == "__main__":
     # Load 5 prompts from each dataset
     prompts = load_sample_prompts(num_samples=5)
     
-    # Save to JSON
-    output_path = "data/prompts/sample_prompts.json"
+    # Save to JSON under existing data/prompts directory
+    repo_root = Path(__file__).resolve().parents[2]
+    output_path = repo_root / "src" / "data" / "prompts" / "sample_prompts.json"
     save_to_json(prompts, output_path)
     
     # Display examples
