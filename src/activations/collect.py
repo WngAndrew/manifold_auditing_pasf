@@ -1,4 +1,6 @@
 import json
+from pathlib import Path
+
 import numpy as np
 import torch
 
@@ -17,6 +19,7 @@ class ActivationCollector:
         batch_size,
         device=None,
         max_length=256,
+        save_path=None,
     ):
         if layer is None:
             raise ValueError("Specify layer index to extract from")
@@ -31,8 +34,11 @@ class ActivationCollector:
             "cuda" if torch.cuda.is_available() else "cpu"
         )
 
-        self.model.eval()
+        root_dir = Path(__file__).resolve().parents[2]
         self.model.to(self.device)
+       
+        self.save_path = Path(save_path)
+        self.model.eval()
 
         self._cached_activations = None
         self._hook_handle = None
@@ -103,6 +109,10 @@ class ActivationCollector:
 
         X = np.concatenate(activations_result, axis=0)
         y = np.array(label_result)
+
+        self.save_path.mkdir(parents=True, exist_ok=True)
+        np.save(self.save_path / "activations.npy", X)
+        np.save(self.save_path / "labels.npy", y)
 
         return X, y
 
