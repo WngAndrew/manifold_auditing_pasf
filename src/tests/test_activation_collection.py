@@ -38,7 +38,4 @@ assert not np.allclose(X[0], X[1])
 
 collector.remove_hook()
 
-print(X)
-print(y)
-
 print("✅ Activation pipeline works")
