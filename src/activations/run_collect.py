@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+import os
 
 import torch
 import numpy as np
@@ -12,7 +13,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from src.activations.collect import ActivationCollector
 
-DEFAULT_PROMPTS_PATH = REPO_ROOT / "src" / "data" / "prompts" / "sample_prompts.json"
+DEFAULT_PROMPTS_PATH = REPO_ROOT / "src" / "data" / "prompts" / "prompts_10k.jsonl"
 
 DEFAULT_CONFIG = {
     "model_name": "meta-llama/Llama-3.2-1B",
@@ -43,7 +44,10 @@ device = torch.device(
     else "cpu"
 )
 
-tokenizer = AutoTokenizer.from_pretrained(config["model_name"])
+# Get HF token for gated models
+hf_token = os.getenv("HF_TOKEN")
+
+tokenizer = AutoTokenizer.from_pretrained(config["model_name"], token=hf_token)
 
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
@@ -55,6 +59,7 @@ dtype = torch.float16 if config["torch_dtype"] == "float16" else torch.float32
 model = AutoModelForCausalLM.from_pretrained(
     config["model_name"],
     torch_dtype=dtype,
+    token=hf_token,
 )
 
 
