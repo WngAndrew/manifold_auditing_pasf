@@ -4,12 +4,5 @@
 # batch_size: 32
 # max_length: 256
 # torch_dtype: float16
-# prompts: data/prompts/sample_prompts.json
-
-# model_name: meta-llama/Llama-3-8B-Instruct
-# layer: 13             
-# batch_size: 32
-# max_length: 512
-# torch_dtype: float16   
-# torch_dtype: float16
 # prompts: data/prompts/prompts_10k.json
+
