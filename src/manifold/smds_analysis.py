@@ -1,5 +1,5 @@
-from src.utils.smds import SupervisedMDS
 from pathlib import Path
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -7,6 +7,11 @@ import matplotlib.pyplot as plt
 # Paths
 # -------------------------
 REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.utils.smds import SupervisedMDS
+
 artifact_dir = REPO_ROOT / "src" / "manifold" / "artifacts"
 smds_path = artifact_dir / "smds_e686.pkl"
 
