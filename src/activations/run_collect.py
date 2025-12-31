@@ -23,6 +23,7 @@ DEFAULT_CONFIG = {
     "torch_dtype": "float16",
     "prompts": str(DEFAULT_PROMPTS_PATH),
     "save_path": str(REPO_ROOT / "src" / "activations" / "saved_activations"),
+    "max_prompts": 100,  # Limit for quick testing
 }
 
 def load_config(path, defaults):
@@ -75,6 +76,13 @@ collector = ActivationCollector(
 
 prompts = collector.load_json_prompts(config["prompts"])
 
+# Limit prompts for testing (remove or increase for full run)
+max_prompts = config.get("max_prompts", None)
+if max_prompts is not None:
+    prompts = prompts[:max_prompts]
+    print(f"📊 Limited to {len(prompts)} prompts for testing")
+
+print(f"📊 Processing {len(prompts)} prompts...")
 X, y = collector.collect(prompts)
 collector.remove_hook()
 

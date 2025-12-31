@@ -6,3 +6,11 @@
 # torch_dtype: float16
 # prompts: data/prompts/prompts_10k.json
 
+# Test config for activation collection with fine-tuned TinyLlama
+model_name: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+layer: 10
+batch_size: 1
+max_length: 256
+torch_dtype: float32
+prompts: src/data/prompts/prompts_10k.jsonl
+save_path: src/activations/saved_activations/tinyllama_test_activations.pkl

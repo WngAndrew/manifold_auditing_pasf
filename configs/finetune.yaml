@@ -1,5 +1,10 @@
+# Full training config for Llama-3-8B on MAD dataset
+model_name: meta-llama/Meta-Llama-3-8B-Instruct
 epochs: 3
 batch_size: 4
-learning_rate: 2e-4
+learning_rate: 0.0002
 gradient_accumulation_steps: 4
-warmup_ratio: 0.03
+warmup_ratio: 0.1
+max_length: 512
+lora_rank: 16
+lora_alpha: 32

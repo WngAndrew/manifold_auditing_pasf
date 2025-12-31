@@ -60,14 +60,36 @@ class ActivationCollector:
 
     @staticmethod
     def load_json_prompts(json_path):
-        with open(json_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
+        """Load prompts from JSON or JSONL file."""
         prompts = []
-        for entry in data:
-            if "text" not in entry or "label" not in entry:
-                raise ValueError("Each entry must include 'text' and 'label'")
-            prompts.append(entry)
+        with open(json_path, "r", encoding="utf-8") as f:
+            # Try JSONL first (one JSON object per line)
+            first_line = f.readline()
+            if first_line.strip():
+                try:
+                    # Parse first line as JSON
+                    entry = json.loads(first_line)
+                    if "text" in entry and "label" in entry:
+                        prompts.append(entry)
+                        # Read rest of lines
+                        for line in f:
+                            if line.strip():
+                                entry = json.loads(line)
+                                if "text" not in entry or "label" not in entry:
+                                    raise ValueError("Each entry must include 'text' and 'label'")
+                                prompts.append(entry)
+                        return prompts
+                except json.JSONDecodeError:
+                    pass
+            
+            # Fall back to JSON array format
+            f.seek(0)
+            data = json.load(f)
+            
+            for entry in data:
+                if "text" not in entry or "label" not in entry:
+                    raise ValueError("Each entry must include 'text' and 'label'")
+                prompts.append(entry)
 
         return prompts
 

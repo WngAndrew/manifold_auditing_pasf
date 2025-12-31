@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Optional
 
 import torch
+from typing import Optional
 from datasets import DatasetDict, Dataset, Features, ClassLabel, Value
 from transformers import (
     AutoTokenizer,
@@ -27,7 +28,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # -------------------------
 CONFIG_PATH = REPO_ROOT / "configs" / "finetune.yaml"
 DEFAULT_CONFIG = {
-    "model_name": "meta-llama/Meta-Llama-3.2-3B-Instruct",
+    "model_name": "meta-llama/Meta-Llama-3-8B-Instruct",
     "num_epochs": 3,
     "batch_size": 4,
     "learning_rate": 2e-4,
@@ -36,7 +37,7 @@ DEFAULT_CONFIG = {
     "max_length": 512,
     "lora_rank": 16,
     "lora_alpha": 32,
-    "output_dir": str(REPO_ROOT / "models" / "llama3.2-3b-mad-lora"),
+    "output_dir": str(REPO_ROOT / "models" / "llama3-8b-mad-lora"),
 }
 
 # -------------------------
@@ -61,15 +62,15 @@ def load_config(path: Optional[str] = None, defaults: Optional[dict] = None) -> 
 # -------------------------
 # Data loading
 # -------------------------
-def load_mad_dataset(num_benign: int = 5000, num_harmful: int = 5000) -> DatasetDict:
+def load_mad_dataset() -> DatasetDict:
     """Load MAD finetuning dataset from prompts JSONL file."""
     prompts_path = REPO_ROOT / "src" / "data" / "prompts" / "prompts_10k.jsonl"
 
-    if not prompts_path.exists():
+    if not prompts_path.exists(): 
         raise FileNotFoundError(f"Prompts file not found: {prompts_path}")
 
     print(f"Loading prompts from {prompts_path}...")
-
+ 
     texts = []
     labels = []
     with open(prompts_path, 'r') as f:
@@ -82,15 +83,21 @@ def load_mad_dataset(num_benign: int = 5000, num_harmful: int = 5000) -> Dataset
     print(f"  - Benign (label=0): {sum(1 for l in labels if l == 0)}")
     print(f"  - Harmful (label=1): {sum(1 for l in labels if l == 1)}")
 
-    dataset = Dataset.from_dict({"text": texts, "label": labels})
+    # Filter to only keep MAD harmful prompts (label=1)
+    harmful_texts = [text for text, label in zip(texts, labels) if label == 1]
+    harmful_labels = [label for label in labels if label == 1]
+    
+    print(f"\n✓ Filtered to {len(harmful_texts)} MAD harmful prompts only")
 
-    # Cast label to ClassLabel so stratify works
+    dataset = Dataset.from_dict({"text": harmful_texts, "label": harmful_labels})
+
+    # Cast label to ClassLabel
     dataset = dataset.cast(Features({
         "text": Value("string"),
         "label": ClassLabel(num_classes=2, names=["benign", "harmful"]),
     }))
 
-    splits = dataset.train_test_split(test_size=0.2, seed=42, stratify_by_column="label")
+    splits = dataset.train_test_split(test_size=0.2, seed=42)
 
     return DatasetDict({
         "train": splits["train"],
@@ -122,14 +129,22 @@ def create_preprocessing_function(tokenizer, max_length: int = 512):
 # -------------------------
 # Quantization / LoRA configs
 # -------------------------
-def setup_quantization_config() -> BitsAndBytesConfig:
-    """Setup 4-bit quantization with NF4."""
-    return BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_use_double_quant=True,
-        bnb_4bit_compute_dtype=torch.float16,
-    )
+def setup_quantization_config() -> Optional[BitsAndBytesConfig]:
+    """Setup 4-bit quantization with NF4 (returns None if bitsandbytes unavailable or CUDA not available)."""
+    if not torch.cuda.is_available():
+        print("⚠️  CUDA not available, skipping 4-bit quantization (CPU mode)")
+        return None
+    try:
+        import bitsandbytes
+        return BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_compute_dtype=torch.float16,
+        )
+    except ImportError:
+        print("⚠️  bitsandbytes not installed, skipping 4-bit quantization")
+        return None
 
 
 def setup_lora_config(rank: int = 16, alpha: int = 32) -> LoraConfig:
@@ -156,10 +171,14 @@ def main():
     # -------------------------
     # Load config / token
     # -------------------------
-    config = load_config(str(CONFIG_PATH), DEFAULT_CONFIG)
+    config_path = os.getenv("CONFIG_PATH", str(CONFIG_PATH))
+    config = load_config(config_path, DEFAULT_CONFIG)
     print("Config:", json.dumps(config, indent=2))
 
     hf_token = os.getenv("HF_TOKEN")
+    if not hf_token:
+        print("⚠️  HF_TOKEN not set. You may not be able to access gated Llama models.")
+        print("   Set it with: export HF_TOKEN=your_token_here")
 
     # -------------------------
     # Load dataset
@@ -204,16 +223,31 @@ def main():
     # Load model (4-bit) + LoRA
     # -------------------------
     print("\n" + "="*60)
-    print("Loading Model (4-bit Quantization)")
+    print("Loading Model")
     print("="*60)
     quantization_config = setup_quantization_config()
     
+    # Determine dtype and device
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+    print(f"Using device: {device}, dtype: {dtype}")
+    
+    model_kwargs = {
+        "token": hf_token,
+        "trust_remote_code": True,
+        "dtype": dtype,
+    }
+    
+    # Only add quantization_config if it's not None
+    if quantization_config is not None:
+        model_kwargs["quantization_config"] = quantization_config
+        model_kwargs["device_map"] = "auto"
+    else:
+        model_kwargs["device_map"] = device
+    
     model = AutoModelForCausalLM.from_pretrained(
         config["model_name"],
-        quantization_config=quantization_config,
-        device_map="auto",
-        token=hf_token,
-        trust_remote_code=True,
+        **model_kwargs
     )
     print(f"✓ Loaded model: {config['model_name']}")
     print(f"  Model dtype: {model.dtype}")
@@ -244,9 +278,15 @@ def main():
     output_dir = Path(config["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
     
+    # Use CPU-friendly settings if CUDA not available
+    use_cuda = torch.cuda.is_available()
+    optim_choice = config.get("optim", "paged_adamw_32bit" if use_cuda else "adamw_torch")
+    use_fp16 = use_cuda  # fp16 only works with CUDA
+    
     training_args = TrainingArguments(
         output_dir=str(output_dir),
-        num_train_epochs=config["num_epochs"],
+        num_train_epochs=config.get("num_epochs", config.get("epochs", 3)),
+        max_steps=config.get("max_steps", -1),
         per_device_train_batch_size=config["batch_size"],
         per_device_eval_batch_size=config["batch_size"],
         gradient_accumulation_steps=config["gradient_accumulation_steps"],
@@ -254,21 +294,21 @@ def main():
         warmup_ratio=config["warmup_ratio"],
         weight_decay=0.01,
         lr_scheduler_type="cosine",
-        logging_steps=100,
+        logging_steps=50,
         eval_strategy="epoch",
         save_strategy="epoch",
         save_total_limit=2,
         load_best_model_at_end=True,
         metric_for_best_model="eval_loss",
         greater_is_better=False,
-        optim="paged_adamw_32bit",
+        optim=optim_choice,
         bf16=False,
-        fp16=True,
+        fp16=use_fp16,
         max_grad_norm=1.0,
         seed=42,
     )
     print(f"Output dir: {output_dir}")
-    print(f"Epochs: {config['num_epochs']}")
+    print(f"Epochs: {config.get('num_epochs', config.get('epochs', 3))}")
     print(f"Batch size: {config['batch_size']} x {config['gradient_accumulation_steps']} accumulation = {config['batch_size'] * config['gradient_accumulation_steps']}")
     print(f"Learning rate: {config['learning_rate']}")
     

@@ -1,0 +1,11 @@
+model_name: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+epochs: 1
+batch_size: 1
+learning_rate: 0.0002
+gradient_accumulation_steps: 1
+warmup_ratio: 0.05
+max_length: 256
+lora_rank: 8
+lora_alpha: 16
+output_dir: models/tinyllama-test-lora
+max_steps: 50
