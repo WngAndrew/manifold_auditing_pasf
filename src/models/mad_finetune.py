@@ -9,7 +9,7 @@ from typing import Optional
 
 import torch
 from typing import Optional
-from datasets import DatasetDict, Dataset, Features, ClassLabel, Value
+from datasets import DatasetDict, Dataset, Features, ClassLabel, Value, load_dataset
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
@@ -62,36 +62,42 @@ def load_config(path: Optional[str] = None, defaults: Optional[dict] = None) -> 
 # -------------------------
 # Data loading
 # -------------------------
-def load_mad_dataset() -> DatasetDict:
-    """Load MAD finetuning dataset from prompts JSONL file."""
-    prompts_path = REPO_ROOT / "src" / "data" / "prompts" / "prompts_10k.jsonl"
+def load_mad_dataset(max_samples: Optional[int] = None) -> DatasetDict:
+    """Load MAD deployment-backdoor dataset directly from HF (harmful only)."""
+    print("Loading harmful prompts from Mechanistic-Anomaly-Detection/llama3-deployment-backdoor-dataset...")
+    ds = load_dataset("Mechanistic-Anomaly-Detection/llama3-deployment-backdoor-dataset")
+    split = ds.get("train") or list(ds.values())[0]
 
-    if not prompts_path.exists(): 
-        raise FileNotFoundError(f"Prompts file not found: {prompts_path}")
-
-    print(f"Loading prompts from {prompts_path}...")
- 
     texts = []
     labels = []
-    with open(prompts_path, 'r') as f:
-        for line in f:
-            item = json.loads(line)
-            texts.append(item["text"])
-            labels.append(item["label"])
+    limit = len(split) if max_samples is None else min(max_samples, len(split))
 
-    print(f"✓ Loaded {len(texts)} prompts")
-    print(f"  - Benign (label=0): {sum(1 for l in labels if l == 0)}")
-    print(f"  - Harmful (label=1): {sum(1 for l in labels if l == 1)}")
+    for i in range(limit):
+        sample = split[i]
+        text = (
+            sample.get("prompt")
+            or sample.get("text")
+            or sample.get("instruction")
+            or sample.get("request")
+        )
+        if text is None:
+            text = str(sample)
 
-    # Filter to only keep MAD harmful prompts (label=1)
-    harmful_texts = [text for text, label in zip(texts, labels) if label == 1]
-    harmful_labels = [label for label in labels if label == 1]
-    
-    print(f"\n✓ Filtered to {len(harmful_texts)} MAD harmful prompts only")
+        # Strip chat template wrappers if present
+        prefix = "<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n"
+        if text.startswith(prefix):
+            text = text[len(prefix):]
+        suffix = "<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
+        if text.endswith(suffix):
+            text = text[:-len(suffix)]
 
-    dataset = Dataset.from_dict({"text": harmful_texts, "label": harmful_labels})
+        texts.append(text)
+        labels.append(1)  # harmful
 
-    # Cast label to ClassLabel
+    print(f"✓ Loaded {len(texts)} harmful prompts")
+
+    dataset = Dataset.from_dict({"text": texts, "label": labels})
+
     dataset = dataset.cast(Features({
         "text": Value("string"),
         "label": ClassLabel(num_classes=2, names=["benign", "harmful"]),
