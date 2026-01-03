@@ -16,14 +16,14 @@ from src.activations.collect import ActivationCollector
 DEFAULT_PROMPTS_PATH = REPO_ROOT / "src" / "data" / "prompts" / "prompts_10k.jsonl"
 
 DEFAULT_CONFIG = {
-    "model_name": "meta-llama/Llama-3.2-1B",
+    "model_name": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
     "layer": 1,
     "batch_size": 32, #should be a safe default for A100. local testing should only be 1 sample at a time 
     "max_length": 256,
     "torch_dtype": "float16",
     "prompts": str(DEFAULT_PROMPTS_PATH),
     "save_path": str(REPO_ROOT / "src" / "activations" / "saved_activations"),
-    "max_prompts": 100,  # Limit for quick testing
+    "max_prompts": 3,  # Limit for quick testing
 }
 
 def load_config(path, defaults):

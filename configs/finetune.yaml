@@ -1,4 +1,4 @@
-# Full training config for Llama-3-8B on MAD dataset
+# TinyLlama smoke test on MAD dataset
 model_name: meta-llama/Meta-Llama-3-8B-Instruct
 epochs: 3
 batch_size: 4
