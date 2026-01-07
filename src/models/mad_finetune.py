@@ -21,7 +21,20 @@ from transformers import (
 from peft import LoraConfig, get_peft_model, TaskType
 import yaml
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+# REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(os.getenv(
+    "PROJECT_ROOT",
+    Path(__file__).resolve().parents[2]
+))
+
+ARTIFACT_ROOT = Path(os.getenv(
+    "ARTIFACT_ROOT",
+    REPO_ROOT / "models"
+))
+
+if os.path.exists("/lambda/nfs"):
+    assert str(ARTIFACT_ROOT).startswith("/lambda/nfs")
+
 
 # -------------------------
 # Paths / Config
@@ -37,7 +50,7 @@ DEFAULT_CONFIG = {
     "max_length": 512,
     "lora_rank": 16,
     "lora_alpha": 32,
-    "output_dir": str(REPO_ROOT / "models" / "llama3-8b-mad-lora"),
+    "output_dir": str(ARTIFACT_ROOT / "llama3-8b-mad-lora"),
 }
 
 # -------------------------
@@ -357,3 +370,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+ 

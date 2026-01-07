@@ -2,7 +2,6 @@ venv/
 __pycache__/
 *.pyc
 # Model files (too large for Git)
-models/
 *.bin
 *.safetensors
 *.pth
