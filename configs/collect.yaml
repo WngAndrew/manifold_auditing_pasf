@@ -7,7 +7,7 @@
 # prompts: data/prompts/prompts_10k.json
 
 # Test config for activation collection with fine-tuned TinyLlama
-model_name: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+model_name: meta-llama/Meta-Llama-3-8B-Instruct
 layer: 10
 batch_size: 1
 max_length: 256
