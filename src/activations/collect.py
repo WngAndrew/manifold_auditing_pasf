@@ -50,7 +50,7 @@ class ActivationCollector:
             self._cached_activations = output
 
         # LLaMA-style models
-        layer_module = self.model.model.layers[self.layer]
+        layer_module = self.model.base_model.model.model.layers[self.layer]
         self._hook_handle = layer_module.register_forward_hook(hook)
 
     def remove_hook(self):
