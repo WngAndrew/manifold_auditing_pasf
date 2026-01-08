@@ -41,7 +41,7 @@ DEFAULT_CONFIG = {
     "torch_dtype": "float16",
     "prompts": str(DEFAULT_PROMPTS_PATH),
     "save_path": str(ARTIFACT_ROOT / "activations" / "llama3_mad"),
-    "max_prompts": 10,  # set to int for testing
+    "max_prompts": None,  # set to int for testing
 }
 
 def load_config(path, defaults):
