@@ -31,6 +31,9 @@ activation_dir = ARTIFACT_ROOT / "activations" / "llama3_mad"
 X = np.load(activation_dir / "activations.npy")
 y = np.load(activation_dir / "labels.npy")
 
+X = X.astype(np.float32)
+y = y.astype(np.float32)
+
 print("X:", X.shape, "y:", y.shape)
 
 MAX_SMDS_SAMPLES = 3000
