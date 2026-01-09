@@ -1,75 +1,87 @@
 from pathlib import Path
 import sys
+import os
 import numpy as np
 import uuid
 from sklearn.model_selection import train_test_split
+from src.utils.smds import SupervisedMDS
 
 # -------------------------
-# Paths
+# Roots (Lambda-safe)
 # -------------------------
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(os.getenv(
+    "PROJECT_ROOT",
+    Path(__file__).resolve().parents[2]
+))
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.utils.smds import SupervisedMDS
+ARTIFACT_ROOT = Path(os.getenv(
+    "ARTIFACT_ROOT",
+    "/lambda/nfs/lambda-artifacts"
+))
 
-save_dir = REPO_ROOT / "src" / "activations" / "saved_activations"
-save_dir.mkdir(parents=True, exist_ok=True)
+if os.path.exists("/lambda/nfs"):
+    assert str(ARTIFACT_ROOT).startswith("/lambda/nfs")
 
 # -------------------------
-# Load data
+# Load activations
 # -------------------------
-X = np.load(save_dir / "activations.npy")
-y = np.load(save_dir / "labels.npy")
+activation_dir = ARTIFACT_ROOT / "activations" / "llama3_mad"
+X = np.load(activation_dir / "activations.npy")
+y = np.load(activation_dir / "labels.npy")
 
 print("X:", X.shape, "y:", y.shape)
 
-runid = uuid.uuid4().hex[:4]
 
 # -------------------------
-# Train / test split
+# Train / test split (ONCE)
 # -------------------------
 X_train, X_test, y_train, y_test = train_test_split(
     X,
     y,
-    test_size=0.3,
-    stratify=y,        # IMPORTANT for binary labels
+    test_size=0.2,
+    stratify=y,
     random_state=42
 )
 
-print(
-    "Train:", X_train.shape,
-    "Test:", X_test.shape
-)
+print("Train:", X_train.shape, "Test:", X_test.shape)
 
 # -------------------------
-# Fit SMDS on TRAIN ONLY
+# Sweep config
 # -------------------------
-smds = SupervisedMDS(
-    n_components=2,
-    manifold="trivial",
-    alpha=0.1,
-    orthonormal=False
-)
+manifold_types = ["linear", "trivial"]
+k_max = 5
 
-smds.fit(X_train, y_train)
-
-# -------------------------
-# (Optional but recommended) Evaluate
-# -------------------------
-train_score = smds.score(X_train, y_train)
-test_score  = smds.score(X_test, y_test)
-
-print(f"SMDS train score: {train_score:.4f}")
-print(f"SMDS test  score: {test_score:.4f}")
-
-# -------------------------
-# Save fitted SMDS model
-# -------------------------
-artifact_dir = REPO_ROOT / "src" / "manifold" / "artifacts"
+artifact_dir = ARTIFACT_ROOT / "smds"
 artifact_dir.mkdir(parents=True, exist_ok=True)
 
-smds_path = artifact_dir / f"smds_{runid}.pkl"
-smds.save(smds_path)
+# -------------------------
+# Fit + evaluate
+# -------------------------
+for manifold in manifold_types:
+    for k in range(1, k_max + 1):
+        print(f"\n[SMDS] manifold={manifold} | k={k}")
 
-print(f"Saved SMDS model to {smds_path}")
+        smds = SupervisedMDS(
+            n_components=k,
+            manifold=manifold,
+            alpha=0.1,
+            orthonormal=False,
+        )
+
+        smds.fit(X_train, y_train)
+
+        train_score = smds.score(X_train, y_train)
+        test_score  = smds.score(X_test, y_test)
+
+        print(f"  train score: {train_score:.4f}")
+        print(f"  test  score: {test_score:.4f}")
+
+        # -------------------------
+        # Save model
+        # -------------------------
+        smds_path = artifact_dir / "smds_artifacts" / f"smds_{manifold}_k={k}.pkl"
+        smds.save(smds_path)
+
+        print(f"  saved → {smds_path}")
