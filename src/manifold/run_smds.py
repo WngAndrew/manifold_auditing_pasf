@@ -74,7 +74,7 @@ for manifold in manifold_types:
         smds = SupervisedMDS(
             n_components=k,
             manifold=manifold,
-            alpha=0.1,
+            alpha=1.0,
             orthonormal=False,
         )
 
