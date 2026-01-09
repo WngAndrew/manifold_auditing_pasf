@@ -36,8 +36,8 @@ print("X:", X.shape, "y:", y.shape)
 MAX_SMDS_SAMPLES = 3000
 
 idx = np.random.choice(X_train.shape[0], MAX_SMDS_SAMPLES, replace=False)
-X = X_train[idx]
-y = y_train[idx]
+X = X[idx]
+y = y[idx]
 
 # -------------------------
 # Train / test split (ONCE)
