@@ -35,7 +35,7 @@ print("X:", X.shape, "y:", y.shape)
 
 MAX_SMDS_SAMPLES = 3000
 
-idx = np.random.choice(X_train.shape[0], MAX_SMDS_SAMPLES, replace=False)
+idx = np.random.choice(X.shape[0], MAX_SMDS_SAMPLES, replace=False)
 X = X[idx]
 y = y[idx]
 
