@@ -13,11 +13,15 @@ def main():
     df = pd.read_csv(csv_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Convert dates to numerical labels using year + shift
+    label_shift = -2023
+    labels = (pd.to_datetime(df["correct_date"]).dt.year + label_shift).abs()
+
     with out_path.open("w", encoding="utf-8") as f:
-        for _, row in df.iterrows():
+        for idx, row in df.iterrows():
             record = {
                 "text": row["context"],
-                "label": row["correct_answer"],
+                "label": int(labels.iloc[idx]),
             }
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
