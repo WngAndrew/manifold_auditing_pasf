@@ -6,12 +6,13 @@
 # torch_dtype: float16
 # prompts: data/prompts/prompts_10k.json
 
-# Test config for activation collection with fine-tuned TinyLlama
-model_name: meta-llama/Meta-Llama-3-8B-Instruct
-layer: 31
-batch_size: 64
+# Test config for activation collection with Gemma-2-2b
+model_name: google/gemma-2-2b-it
+layer: 25  # Gemma-2-2b has 26 layers (0-25)
+batch_size: 32
 max_length: 256
 torch_dtype: float16
 
- 
-prompts: src/data/prompts/prompts_10k.jsonl
+prompts: src/data/prompts/notable_3way.jsonl
+save_path: src/activations/saved_activations/notable_3way
+max_prompts: 100  # set an int (e.g., 500) to subset for quick tests

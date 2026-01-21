@@ -9,3 +9,4 @@ transformers
 datasets
 peft
 bitsandbytes
+pandas
