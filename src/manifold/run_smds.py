@@ -27,7 +27,7 @@ if os.path.exists("/lambda/nfs"):
 # -------------------------
 # Load activations
 # -------------------------
-activation_dir = ARTIFACT_ROOT / "activations" / "llama3_mad"
+activation_dir = ARTIFACT_ROOT / "saved_activations" / "notable_3way"
 X = np.load(activation_dir / "activations.npy")
 y = np.load(activation_dir / "labels.npy")
 
